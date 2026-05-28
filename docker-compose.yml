@@ -39,21 +39,30 @@ services:
       - dokploy-network
 
   daloradius:
-    image: drakkan/daloradius:latest
+    build:
+      context: https://github.com/lirantal/daloradius.git#master
     restart: unless-stopped
     depends_on:
       radius-db:
         condition: service_healthy
+      freeradius:
+        condition: service_started
     expose:
       - "80"
+      - "8000"
     environment:
-      - DB_HOST=radius-db
-      - DB_PORT=3306
-      - DB_USER=${MYSQL_USER:-radius}
-      - DB_PASS=${MYSQL_PASSWORD}
-      - DB_NAME=${MYSQL_DATABASE:-radius}
+      - MYSQL_HOST=radius-db
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER:-radius}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-radius}
+      - DEFAULT_FREERADIUS_SERVER=freeradius
+      - DEFAULT_CLIENT_SECRET=${DEFAULT_CLIENT_SECRET}
+      # operators UI binds to 127.0.0.1 by default — expose to the Docker
+      # network so Dokploy/Traefik can route a domain to it
+      - DALORADIUS_OPERATORS_BIND=0.0.0.0:8000
     volumes:
-      - ../files/daloradius:/var/www/html/library
+      - ../files/daloradius:/data
     networks:
       - dokploy-network
 
