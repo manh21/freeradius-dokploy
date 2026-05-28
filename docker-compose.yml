@@ -7,6 +7,8 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-radius}
       MYSQL_USER: ${MYSQL_USER:-radius}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
     volumes:
       - ../files/mysql:/var/lib/mysql
     networks:
@@ -42,8 +44,8 @@ services:
     depends_on:
       radius-db:
         condition: service_healthy
-    ports:
-      - "8000:80"
+    expose:
+      - "80"
     environment:
       - DB_HOST=radius-db
       - DB_PORT=3306
