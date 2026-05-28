@@ -1,0 +1,60 @@
+services:
+  radius-db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-radius}
+      MYSQL_USER: ${MYSQL_USER:-radius}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ../files/mysql:/var/lib/mysql
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  freeradius:
+    build: ./freeradius
+    restart: unless-stopped
+    depends_on:
+      radius-db:
+        condition: service_healthy
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    environment:
+      - RADIUS_DB_HOST=radius-db
+      - RADIUS_DB_PORT=3306
+      - RADIUS_DB_USER=${MYSQL_USER:-radius}
+      - RADIUS_DB_PASS=${MYSQL_PASSWORD}
+      - RADIUS_DB_NAME=${MYSQL_DATABASE:-radius}
+    networks:
+      - dokploy-network
+
+  daloradius:
+    image: drakkan/daloradius:latest
+    restart: unless-stopped
+    depends_on:
+      radius-db:
+        condition: service_healthy
+    ports:
+      - "8000:80"
+    environment:
+      - DB_HOST=radius-db
+      - DB_PORT=3306
+      - DB_USER=${MYSQL_USER:-radius}
+      - DB_PASS=${MYSQL_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE:-radius}
+    volumes:
+      - ../files/daloradius:/var/www/html/library
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
